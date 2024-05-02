@@ -4,10 +4,19 @@ const mongoose = require('mongoose');
 const User = require('./user.model');
 const app = express();
 const jwt = require('jsonwebtoken');
-
+const Query = require('./query.model')
+const { GoogleGenerativeAI } = require('@google/generative-ai');
+const dotenv = require('dotenv')
+dotenv.config();
 app.use(cors());
 app.use(express.json());
+// Access your API key as an environment variable (see "Set up your API key" above)
+const genAI = new GoogleGenerativeAI("AIzaSyCt-dJRRsSrSWpuInI68CCafsxlbx0atuY");
 
+// ...
+
+// For text-only input, use the gemini-pro model
+const model = genAI.getGenerativeModel({ model: "gemini-pro"});
 mongoose.connect('mongodb://127.0.0.1:27017/db', {
     useNewUrlParser: true,
     useUnifiedTopology: true,
@@ -26,6 +35,7 @@ mongoose.connect('mongodb://127.0.0.1:27017/db', {
     console.log("failed to Connect!", err)
 })
 
+//register User
 app.post('/api/register', async (req, res) => {
     console.log(req.body);
     try {
@@ -65,6 +75,40 @@ app.post('/api/login', async (req,res) => {
         return res.json({ status: 'error', user: false });
     }
 });
+
+//User data
+app.post("/api/dashboard", async (req,res) =>{
+    try{
+        
+
+       // ...
+       var text = ''
+    async function run() {
+    const prompt = `evalute the ${req.body.answer} according to given ${req.body.rubrics} and ${req.body.problem}`
+  
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+     text = response.text();
+    return text
+    
+  }
+  
+  text  = await run();
+
+  const query = await Query.create({
+    rubrics: req.body.rubrics,
+    problem: req.body.problem,
+    answer: req.body.answer,
+    response: text
+})
+await query.save()
+         res.json({status : "ok",response: text})
+    }
+    catch(err){
+        console.error(err);
+        return res.json({ status: 'error', error: 'Internal server error' });
+    }
+})
 
 app.listen(5001, () => {
     console.log("Server started on 3001");
